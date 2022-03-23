@@ -2,10 +2,13 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view,permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.http.response import HttpResponse
-from django.shortcuts import reverse
+from django.shortcuts import get_object_or_404
+from django.db.models import Q
  
 from api.v1.products.serializers import ProductSerializer,CategorySerializer,CartSerializer
 from web.models import Product,Category,Cart
+
+from django.contrib.auth.models import User
  
  
 @api_view(["GET"])
@@ -42,15 +45,22 @@ def singleProduct(request,pk):
 
 
 @api_view(["GET"])
+@permission_classes([AllowAny])
 def categories(request):
      instances = Category.objects.all()
-     serializer = CategorySerializer(instances,many =True)
-     return Response(serializer.data)
+     context = {"request" : request}
+     serializer = CategorySerializer(instances,many =True,context = context)
+     response_data = {
+          'status_code' : 6000,
+          'data' : serializer.data
+     }
+     return Response(response_data)
 
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def getcart(request,pk):
+     get_object_or_404(User.objects.filter(id=pk))
      if Cart.objects.filter(user_id=pk).exists():
           instances = Cart.objects.filter(user_id=pk)
           context = {"request" : request}
@@ -63,7 +73,7 @@ def getcart(request,pk):
      else:
           response_data = {
                'status_code' : 6001,
-               'message' : 'Cart not exist'
+               'message' : 'Your Cart is Empty'
           }
           return Response(response_data)
 
@@ -71,13 +81,52 @@ def getcart(request,pk):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def addToCart(request):
-     Cart.objects.create(
-          user_id = request.data["user_id"],
-          product_id = request.data["product_id"],
-          quantity = request.data["quantity"]
-     )
+     user_id = request.data["user_id"],
+     product_id = request.data["product_id"],
+     quantity = request.data["quantity"]
+
+     item = Cart.objects.filter(Q(user_id=user_id),Q(product_id = product_id) ).values('quantity')
+     if item.exists():
+          old_quantity = item[0].get('quantity')
+          new_quantity = old_quantity + int(quantity)
+          if new_quantity > 10:
+               new_quantity = 10
+          item.update(quantity = new_quantity)
+     else:     
+          Cart.objects.create(
+               user_id = request.data["user_id"],
+               product_id = request.data["product_id"],
+               quantity = request.data["quantity"]
+          )
+
      response_data = {
           'status_code' : 6000,
           'message' : 'Item added to cart'
+     }
+     return Response(response_data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def removeFromCart(request):
+     user_id = request.data["user_id"]
+     cart_id = request.data["cart_id"]
+     Cart.objects.filter( Q(user_id = user_id) ,Q(id = cart_id) ).delete()
+     response_data = {
+          'status_code' : 6000,
+          'message' : 'Item deleted from cart'
+     }
+     return Response(response_data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def changeCartQuantity(request):
+     cart_id = request.data["cart_id"]
+     quantity = request.data["quantity"]
+     Cart.objects.filter(id = cart_id).update(quantity = quantity)
+     response_data = {
+          'status_code' : 6000,
+          'message' : 'Quantity changed'
      }
      return Response(response_data)
