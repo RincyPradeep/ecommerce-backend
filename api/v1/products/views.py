@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
  
 from api.v1.products.serializers import ProductSerializer,CategorySerializer,CartSerializer
-from web.models import Product,Category,Cart
+from products.models import Product,Category,Cart
 
 from django.contrib.auth.models import User
  
@@ -58,24 +58,59 @@ def categories(request):
 
 
 @api_view(["GET"])
+@permission_classes([AllowAny])
+def category_products(request,pk):
+     instances = Product.objects.filter(category_id=pk)
+     context = {"request" : request}
+     serializer = ProductSerializer(instances,many =True,context = context)
+     response_data = {
+          'status_code' : 6000,
+          'data' : serializer.data
+     }
+     return Response(response_data)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def search(request):   
+     instances = Product.objects.filter(is_deleted = False)
+     q = request.GET.get("q")
+     if q:
+          instances = instances.filter(Q(title__icontains = q) | Q(description__icontains = q) | Q(category__name__icontains = q) )
+     context = {"request" : request}
+     serializer = ProductSerializer(instances,many =True,context = context)
+     response_data = {
+          'status_code' : 6000,
+          'data' : serializer.data
+     }
+     return Response(response_data)
+
+
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def getcart(request,pk):
-     get_object_or_404(User.objects.filter(id=pk))
-     if Cart.objects.filter(user_id=pk).exists():
-          instances = Cart.objects.filter(user_id=pk)
-          context = {"request" : request}
-          serializer = CartSerializer(instances,many =True,context = context)
+     if not(User.objects.filter(id = pk)).exists():
           response_data = {
-               'status_code' : 6000,
-               'data' : serializer.data
+               'status_code' : 6001,
+               'message' : 'No such user found!'
           }
           return Response(response_data)
      else:
-          response_data = {
-               'status_code' : 6001,
-               'message' : 'Your Cart is Empty'
-          }
-          return Response(response_data)
+          if Cart.objects.filter(Q(user_id = pk),Q(is_ordered=False)).exists():
+               instances = Cart.objects.filter(Q(user_id=pk),Q(is_ordered=False))
+               context = {"request" : request}
+               serializer = CartSerializer(instances,many =True,context = context)
+               response_data = {
+                    'status_code' : 6000,
+                    'data' : serializer.data
+               }
+               return Response(response_data)
+          else:
+               response_data = {
+                    'status_code' : 6001,
+                    'message' : 'Your Cart is Empty'
+               }
+               return Response(response_data)
 
      
 @api_view(["POST"])

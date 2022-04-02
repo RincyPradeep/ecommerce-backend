@@ -23,7 +23,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     
-    'web',
+    'products',
+
 ]
 
 REST_FRAMEWORK = {
@@ -102,7 +103,7 @@ WSGI_APPLICATION = 'ecommerce.wsgi.application'
 DATABASES = {
      'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'ecommerce',
+        'NAME': 'ecommerce-copy',
         'USER' : 'postgres',
         'PASSWORD' : 'admin',
         'HOST' : 'localhost',
