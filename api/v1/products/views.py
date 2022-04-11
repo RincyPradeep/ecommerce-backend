@@ -120,7 +120,7 @@ def addToCart(request):
      product_id = request.data["product_id"],
      quantity = request.data["quantity"]
 
-     item = Cart.objects.filter(Q(user_id=user_id),Q(product_id = product_id) ).values('quantity')
+     item = Cart.objects.filter(Q(user_id=user_id),Q(product_id = product_id),Q(is_ordered=False) ).values('quantity')
      if item.exists():
           old_quantity = item[0].get('quantity')
           new_quantity = old_quantity + int(quantity)

@@ -17,7 +17,7 @@ environ.Env.read_env()
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def start_payment(request):
-    
+    print("*************START PAYMENT")
     amount = request.data['amount']
     userId = request.data['userId']
     name = request.data['name']
