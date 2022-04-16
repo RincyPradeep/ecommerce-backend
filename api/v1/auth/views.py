@@ -28,7 +28,7 @@ class MyTokenObtainPairView(TokenObtainPairView):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def create(request):
-    
+    form = ProfileForm()
     first_name = request.data["first_name"]
     last_name = request.data["last_name"]
     email = request.data["email"]
@@ -77,56 +77,63 @@ def create(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_profile(request,pk):
-     if Profile.objects.filter(user=pk).exists():         
-          instance = Profile.objects.get(user=pk)
-          context = {"request" : request}
-          serializer = ProfileSerializer(instance,context = context)
-          response_data = {
-               'status_code' : 6000,
-               'data' : serializer.data
-          }
-          return Response(response_data)
-     else:
-          response_data = {
-               'status_code' : 6001,
-               'message' : 'Profile not exist'
-          }
-          return Response(response_data)
+    if Profile.objects.filter(user=pk).exists():         
+        instance = Profile.objects.get(user=pk)
+        context = {"request" : request}
+        serializer = ProfileSerializer(instance,context = context)
+        response_data = {
+            'status_code' : 6000,
+            'data' : serializer.data
+        }
+    else:
+        response_data = {
+            'status_code' : 6001,
+            'message' : 'Profile not exist'
+        }
+    return Response(response_data)
 
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def update_profile(request):
-    print(request.data)
-    user = request.data["user"]
-    name = request.data["name"]
-    address = request.data["address"]
-    pincode = request.data["pincode"]
-    mobile = request.data["mobile"]
-
-    profile = Profile.objects.filter(user = user)
-
-    if profile.exists():
-        profile.update(user=user,name = name,address = address,pincode=pincode,mobile=mobile)
-        context = {"request" : request}
+    try: 
+        user = request.data["user"]
+        name = request.data["name"]
+        address = request.data["address"]
+        pincode = request.data["pincode"]
+        mobile = request.data["mobile"]   
+    except:
         response_data = {
-            'status_code' : 6000,
-            'message' : "Updated"
+            'status_code' : 6001,
+            'message' : "There was something wrong while updating your profile."
         }
         return Response(response_data)
-    else:
-        Profile.objects.create(
-            user_id = user,
-            name = name,
-            address = address,
-            pincode = pincode,
-            mobile = mobile
-        )
-        context = {"request" : request}
+
+    if not(User.objects.filter(id = user)).exists():
         response_data = {
-            'status_code' : 6000,
-            'message' : "Created"
-        }
-        return Response(response_data)
+            'status_code' : 6001,
+            'message' : 'No such user found!'
+        }        
+    else:       
+        profile = Profile.objects.filter(user = user)
+        if profile.exists():
+            profile.update(user=user,name = name,address = address,pincode=pincode,mobile=mobile)
+            response_data = {
+                'status_code' : 6000,
+                'message' : "Profile Updated"
+            }
+        else:
+            Profile.objects.create(
+                user_id = user,
+                name = name,
+                address = address,
+                pincode = pincode,
+                mobile = mobile
+            )
+            response_data = {
+                'status_code' : 6000,
+                'message' : "Profile Created"
+            }
+    return Response(response_data)
 
     

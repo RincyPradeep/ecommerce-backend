@@ -17,57 +17,72 @@ environ.Env.read_env()
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def start_payment(request):
-    print("*************START PAYMENT")
-    amount = request.data['amount']
-    userId = request.data['userId']
-    name = request.data['name']
-    address = request.data['address']
-    pincode = request.data['pincode']
-    mobile = request.data['mobile']
-    carts = request.data['carts']
+    if not request.data['name'] or not request.data['address'] or not request.data['pincode'] or not request.data['mobile']:
+        response_data = {
+            "status_code" : 6001,
+            "message" : "Please fill all the fields"
+        }
+    else:
+        if request.data['amount'] == 0:
+            response_data = {
+            "status_code" : 6001,
+            "message" : "Can not do the transaction due to the amount is zero!"
+        }
+        else:
+            amount = request.data['amount']
+            userId = request.data['userId']
+            name = request.data['name']
+            address = request.data['address']
+            pincode = request.data['pincode']
+            mobile = request.data['mobile']
+            carts = request.data['carts']
 
-    email = User.objects.get(id=userId).email
-    
-    
-    # setup razorpay client this is the client to whome user is paying money that's you
-    client = razorpay.Client(auth=(env('PUBLIC_KEY'), env('SECRET_KEY')))
+            email = User.objects.get(id=userId).email
+            
+            
+            # setup razorpay client this is the client to whome user is paying money that's you
+            client = razorpay.Client(auth=(env('PUBLIC_KEY'), env('SECRET_KEY')))
 
-    # create razorpay order
-    # the amount will come in 'paise' that means if we pass 50 amount will become
-    # 0.5 rupees that means 50 paise so we have to convert it in rupees. So, we will 
-    # mumtiply it by 100 so it will be 50 rupees.
-    payment = client.order.create({"amount": float(amount) * 100, 
-                                   "currency": "INR", 
-                                   "payment_capture": "1"})
+            # create razorpay order
+            # the amount will come in 'paise' that means if we pass 50 amount will become
+            # 0.5 rupees that means 50 paise so we have to convert it in rupees. So, we will 
+            # mumtiply it by 100 so it will be 50 rupees.
+            payment = client.order.create({"amount": float(amount) * 100, 
+                                        "currency": "INR", 
+                                        "payment_capture": "1"})
 
-    # we are saving an order with isPaid=False because we've just initialized the order
-    # we haven't received the money we will handle the payment succes in next 
-    # function
-    for cart in carts:
-        product = cart.get('product')
-        product_title = Product.objects.get(id=product).title
-        quantity = cart.get('quantity')
-        order = Order.objects.create(user = userId,
-                                    name = name,
-                                    address = address,
-                                    pincode = pincode,
-                                    mobile = mobile,
-                                    email = email,
-                                    product_title = product_title, 
-                                    quantity = quantity,
-                                    order_amount = amount, 
-                                    order_payment_id = payment['id'],                                   
-                                    )
+            # we are saving an order with isPaid=False because we've just initialized the order
+            # we haven't received the money we will handle the payment succes in next 
+            # function
+            for cart in carts:
+                product = cart.get('product')
+                product_title = Product.objects.get(id=product).title
+                quantity = cart.get('quantity')
+                product_amount = (Product.objects.get(id=product).price) * quantity
+                order = Order.objects.create(user = userId,
+                                            name = name,
+                                            address = address,
+                                            pincode = pincode,
+                                            mobile = mobile,
+                                            email = email,
+                                            product_title = product_title, 
+                                            product_id = product,
+                                            product_amount = product_amount,
+                                            quantity = quantity,
+                                            order_amount = amount, 
+                                            order_payment_id = payment['id'],                                   
+                                            )
 
-        serializer = OrderSerializer(order)
+                serializer = OrderSerializer(order)
 
 
-    data = {
-        "payment": payment,
-        "order": serializer.data,
-        "email" :email
-    }
-    return Response(data)
+            response_data = {
+                "status_code" : 6000,
+                "payment": payment,
+                "order": serializer.data,
+                "email" :email
+            }
+    return Response(response_data)
 
 
 @api_view(['POST'])
@@ -106,6 +121,7 @@ def handle_payment_success(request):
         
         for order in order:
             order.isPaid = True
+            order.status = "Ordered"
             order.save()
 
         Cart.objects.filter(is_ordered=False).update(is_ordered=True)

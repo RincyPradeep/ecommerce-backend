@@ -2,12 +2,13 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.postgres.fields import ArrayField
 
+
 ORDER_STATUS = (
     ("Ordered","Ordered"),
     ("Shipped","Shipped"),
-    ("Delivered","Delivered")    
+    ("Delivered","Delivered"),
+    ("pending","Pending")   
 )
-
 
 class Profile(models.Model):
     user = models.ForeignKey(User,on_delete=models.CASCADE)
@@ -55,6 +56,19 @@ class Cart(models.Model):
     def __str__(self):
         return str(self.id)
 
+    class Meta:
+        ordering = ["-id"]
+
+class Wishlist(models.Model):
+    user = models.ForeignKey(User,on_delete=models.CASCADE)
+    product = models.ForeignKey(Product,on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return str(self.id)
+
+    class Meta:
+        ordering = ["-id"]
+
 
 class Order(models.Model):
     user = models.IntegerField()
@@ -65,11 +79,23 @@ class Order(models.Model):
     email = models.EmailField()
     order_amount = models.FloatField(max_length=25)
     product_title = models.CharField(max_length=250)
+    product = models.ForeignKey(Product,on_delete=models.CASCADE)
     quantity = models.IntegerField(default=1)
+    product_amount = models.FloatField(max_length=25)
     order_payment_id = models.CharField(max_length=100)
     isPaid = models.BooleanField(default=False)
     order_date = models.DateTimeField(auto_now=True)
-    status = models.CharField(max_length = 25, default = "Ordered",choices=ORDER_STATUS)
+    status = models.CharField(max_length = 25, default = "Pending",choices=ORDER_STATUS)
 
+    def __str__(self):
+        return str(self.id)
+
+    class Meta:
+        ordering =["-order_date"]
+
+
+class Banner(models.Model):
+    image = models.ImageField(upload_to="banners/")
+    
     def __str__(self):
         return str(self.id)

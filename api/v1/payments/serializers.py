@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from products.models import Order
 
+
 class OrderSerializer(serializers.ModelSerializer):
     order_date = serializers.DateTimeField(format="%d %B %Y %I:%M %p")
 
